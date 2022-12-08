@@ -20,16 +20,6 @@ const portNumber = ":8080"
 // Application state
 var app config.AppConfig
 
-type configFile struct {
-	RconIP   string `json:"rconIP"`
-	RconPass string `json:"rconPass"`
-	DbIP     string `json:"dbIP"`
-	DbUser   string `json:"dbUser"`
-	DbPass   string `json:"dbPass"`
-	DbName   string `json:"dbName"`
-	Cache    bool   `json:"cache"`
-}
-
 func main() {
 
 	// Setup Viper + defaults
@@ -75,10 +65,11 @@ func main() {
 
 	// Establish database connection
 	dbIP := viper.GetString("dbIP")
+	dbPort := viper.GetString("dbPort")
 	dbUser := viper.GetString("dbUser")
 	dbPass := viper.GetString("dbPass")
 	dbName := viper.GetString("dbName")
-	go setupDatabaseConnection(dbIP, dbUser, dbPass, dbName)
+	go setupDatabaseConnection(dbIP, dbPort, dbUser, dbPass, dbName)
 
 	//
 	fmt.Println("Starting Webserver on", portNumber)
@@ -91,9 +82,10 @@ func main() {
 
 // TODO add checks in this to make sure we have valid info.
 // setupDatabaseConnection populates the dbSession struct with info needed to connect to the database and calls the initial connection
-func setupDatabaseConnection(ip, user, password, dbname string) {
+func setupDatabaseConnection(ip, port, user, password, dbname string) {
 	dbSession := new(database.Session)
 	dbSession.IP = ip
+	dbSession.Port = port
 	dbSession.User = user
 	dbSession.Password = password
 	dbSession.DbName = dbname
@@ -103,6 +95,7 @@ func setupDatabaseConnection(ip, user, password, dbname string) {
 	fmt.Println(dbSession.Password)
 	fmt.Println(dbSession.User)
 	fmt.Println(dbSession.IP)
+	fmt.Println(dbSession.Port)
 
 	app.DbSession.Setup()
 

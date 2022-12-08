@@ -11,6 +11,7 @@ import (
 type Session struct {
 	Db       *gorm.DB
 	IP       string
+	Port     string
 	User     string
 	Password string
 	DbName   string
@@ -18,7 +19,8 @@ type Session struct {
 
 // SetupInitial forms the initial dsn from the populated values in session struct and connects to the db
 func (d *Session) Setup() {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s?charset=utf8mb4&parseTime=True&loc=Local", d.User, d.Password, d.IP, d.DbName)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", d.User, d.Password, d.IP, d.Port, d.DbName)
+	fmt.Println(dsn)
 	var err error
 
 	d.Db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
