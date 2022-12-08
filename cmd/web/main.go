@@ -15,8 +15,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-const portNumber = ":8080"
-
 // Application state
 var app config.AppConfig
 
@@ -31,7 +29,7 @@ func main() {
 		panic(fmt.Errorf("fatal error config file: %w", err))
 	}
 
-	viper.SetDefault("portNumber", "8080")
+	viper.SetDefault("httpPort", ":8080")
 	viper.SetDefault("InProduction", false)
 	viper.SetDefault("Version", "0.1alpha")
 
@@ -71,10 +69,12 @@ func main() {
 	dbName := viper.GetString("dbName")
 	go setupDatabaseConnection(dbIP, dbPort, dbUser, dbPass, dbName)
 
+	// Prepare Web Server
+	httpPort := ":" + viper.GetString("httpPort")
 	//
 	fmt.Println("Starting Webserver on", portNumber)
 	srv := &http.Server{
-		Addr:    portNumber,
+		Addr:    httpPort,
 		Handler: setupRouter(&app),
 	}
 	_ = srv.ListenAndServe()
