@@ -72,7 +72,7 @@ func main() {
 	// Prepare Web Server
 	httpPort := ":" + viper.GetString("httpPort")
 	//
-	fmt.Println("Starting Webserver on", portNumber)
+	fmt.Println("Starting Webserver on", httpPort)
 	srv := &http.Server{
 		Addr:    httpPort,
 		Handler: setupRouter(&app),
