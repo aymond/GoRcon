@@ -1,12 +1,9 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/Random-7/GoRcon/pkg/config"
@@ -15,6 +12,7 @@ import (
 	"github.com/Random-7/GoRcon/pkg/rcon"
 	"github.com/Random-7/GoRcon/pkg/render"
 	"github.com/alexedwards/scs/v2"
+	"github.com/spf13/viper"
 )
 
 const portNumber = ":8080"
@@ -34,38 +32,55 @@ type configFile struct {
 
 func main() {
 
-	fileConfig, err := parseConfig()
-	if err != nil {
-		log.Fatal("cannot read config")
+	// Setup Viper + defaults
+	viper.SetConfigName("config") // name of config file (without extension)
+	viper.SetConfigType("json")   // REQUIRED if the config file does not have the extension in the name
+	viper.AddConfigPath(".")      // optionally look for config in the working directory
+	err := viper.ReadInConfig()   // Find and read the config file
+	if err != nil {               // Handle errors reading the config file
+		panic(fmt.Errorf("fatal error config file: %w", err))
 	}
+
+	viper.SetDefault("portNumber", "8080")
+	viper.SetDefault("InProduction", false)
+	viper.SetDefault("Version", "0.1alpha")
 
 	//InProduction
 	app.InProduction = false
 	app.Version = "0.1alpha"
-
-	//Setup session and store in appconfig
-	app.Session = scs.New()
-	app.Session.Lifetime = 24 * time.Hour
-	app.Session.Cookie.Persist = true
-	app.Session.Cookie.SameSite = http.SameSiteLaxMode
-	app.Session.Cookie.Secure = app.InProduction
 
 	tc, err := render.CreateTemplateCache()
 	if err != nil {
 		log.Fatal("cannot create template cache")
 	}
 
+	//Setup session and store in appconfig
+	app.Session = scs.New()
+	app.Session.Lifetime = 24 * time.Hour
+	app.Session.Cookie.Persist = true
+	app.Session.Cookie.SameSite = http.SameSiteLaxMode
+	app.Session.Cookie.Secure = viper.GetBool("InProduction")
+	app.TemplateCache = tc //Pass the AppConfig to the render so it can update the template cache
+	app.UseCache = viper.GetBool("useCache")
+
 	//Create new repo and pass it back to handlers
 	repo := handlers.NewRepo(&app)
 	handlers.NewHandlers(repo)
-	//Pass the AppConfig to the render so it can update the template cache
-	app.TemplateCache = tc
-	app.UseCache = fileConfig.Cache
 	render.NewTemplates(&app)
 
-	go setupRconConnection(fileConfig.RconIP, fileConfig.RconPass)
-	go setupDatabaseConnection(fileConfig.DbIP, fileConfig.DbUser, fileConfig.DbPass, fileConfig.DbName)
+	// Establish rcon connection
+	rconIP := viper.GetString("RconIP")
+	rconPass := viper.GetString("RconPass")
+	go setupRconConnection(rconIP, rconPass)
 
+	// Establish database connection
+	dbIP := viper.GetString("dbIP")
+	dbUser := viper.GetString("dbUser")
+	dbPass := viper.GetString("dbPass")
+	dbName := viper.GetString("dbName")
+	go setupDatabaseConnection(dbIP, dbUser, dbPass, dbName)
+
+	//
 	fmt.Println("Starting Webserver on", portNumber)
 	srv := &http.Server{
 		Addr:    portNumber,
@@ -107,19 +122,4 @@ func setupRconConnection(ip string, password string) {
 		fmt.Println(err)
 	}
 
-}
-
-// parseConfig reads the json config file and pulls out values so the program can use it
-func parseConfig() (configFile, error) {
-	var config configFile
-	jsonFile, err := os.Open("config.json")
-	if err != nil {
-		log.Fatal("cannot open config.json")
-		return configFile{}, err
-	}
-	defer jsonFile.Close()
-
-	bytevalue, _ := ioutil.ReadAll(jsonFile)
-	json.Unmarshal(bytevalue, &config)
-	return config, nil
 }
